@@ -1,0 +1,10 @@
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["sh", "-c", "cd expo_intel && streamlit run app.py --server.port 3000 --server.address 0.0.0.0"]
+deploymentTarget = "cloudrun"
+
+run = "cd expo_intel && pip install -r requirements.txt && streamlit run app.py --server.port 3000 --server.address 0.0.0.0"
