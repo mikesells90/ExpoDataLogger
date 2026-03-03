@@ -143,7 +143,7 @@ def render_capture_view() -> bool:
 
     top1, top2, top3, top4, top5 = st.columns([1.4, 1.2, 1.1, 1.4, 1.5])
     with top1:
-        mode = st.radio("Mode", ["Walk", "Booth"], horizontal=True, key="mode")
+        mode = st.selectbox("Capture Type", ["Walk", "Booth"], key="mode")
     with top2:
         time_block = st.radio("Time Block", ["AM", "Midday", "PM"], horizontal=True, key="time_block")
     with top3:
