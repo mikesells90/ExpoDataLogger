@@ -42,7 +42,9 @@ def _cluster_label(centroid: dict) -> str:
 
 def update_clusters(session) -> None:
     entries = session.query(BoothEntry).all()
-    if len(entries) < 12:
+    walk_entries = [row for row in entries if row.mode == "Walk"]
+
+    if len(walk_entries) < 12:
         # Keep clusters empty until enough signal exists.
         for row in entries:
             row.cluster_id = None
@@ -51,7 +53,7 @@ def update_clusters(session) -> None:
         return
 
     rows = []
-    for row in entries:
+    for row in walk_entries:
         rows.append(
             {
                 "id": row.id,
@@ -97,6 +99,10 @@ def update_clusters(session) -> None:
 
     label_by_id = dict(zip(df["id"], final_labels.tolist()))
     for row in entries:
+        if row.mode != "Walk":
+            row.cluster_id = None
+            row.cluster_label = None
+            continue
         cid = int(label_by_id[row.id])
         row.cluster_id = cid
         row.cluster_label = cluster_label_map.get(cid, "Me Too Zone")
