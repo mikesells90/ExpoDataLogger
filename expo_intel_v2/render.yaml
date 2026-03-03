@@ -1,0 +1,30 @@
+databases:
+  - name: expo-intel-db
+    databaseName: expo_intel
+    user: expo_intel
+    plan: free
+
+services:
+  - type: web
+    name: expo-intel-api
+    env: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: expo-intel-db
+          property: connectionString
+      - key: FRONTEND_ORIGIN
+        value: https://expo-intel-ui.onrender.com
+
+  - type: web
+    name: expo-intel-ui
+    env: docker
+    dockerContext: ./frontend
+    dockerfilePath: ./frontend/Dockerfile
+    plan: starter
+    envVars:
+      - key: VITE_API_BASE
+        value: https://expo-intel-api.onrender.com

@@ -11,9 +11,12 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Expo Intelligence API", version="1.0.0")
 
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "*")
+allowed_origins = ["*"] if frontend_origin == "*" else [frontend_origin]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

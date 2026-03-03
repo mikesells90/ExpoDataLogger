@@ -50,6 +50,23 @@ Run:
 npm run dev
 ```
 
+## Production deploy (Render)
+This repo includes:
+- `expo_intel_v2/backend/Dockerfile`
+- `expo_intel_v2/frontend/Dockerfile`
+- `expo_intel_v2/render.yaml`
+
+Steps:
+1. Create a new Render Blueprint from `expo_intel_v2/render.yaml`
+2. Provision the Postgres database
+3. Deploy API (`expo-intel-api`) and UI (`expo-intel-ui`)
+4. Optionally set `APP_PASSWORD` on API service
+
+Notes:
+- API listens on port `8000`
+- UI serves static React bundle via nginx
+- If you use a custom frontend URL, set backend `FRONTEND_ORIGIN` accordingly
+
 ## Implemented pages
 1. Walking Dashboard
 2. Deep Evaluation Dashboard
@@ -76,4 +93,3 @@ npm run dev
 - Uses persisted GraphQL query against the provided endpoint
 - Polite delay between pages (`>= 0.4s`)
 - Stops and returns explicit error on non-200 or GraphQL errors
-

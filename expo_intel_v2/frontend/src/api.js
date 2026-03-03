@@ -1,4 +1,8 @@
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  (window.location.hostname.includes("onrender.com")
+    ? "https://expo-intel-api.onrender.com"
+    : "http://localhost:8000");
 
 export async function apiGet(path) {
   const res = await fetch(`${API_BASE}${path}`);
@@ -19,4 +23,3 @@ export async function apiPost(path, body) {
 export function toCsvUrl(path) {
   return `${API_BASE}${path}`;
 }
-
