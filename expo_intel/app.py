@@ -450,12 +450,6 @@ st.markdown(
 st.title("Expo Intel Radar")
 st.caption("Fast capture with split intelligence war rooms: Walk vs Booth.")
 
-nav = st.sidebar.radio(
-    "Navigate",
-    ["Capture", "Walk War Room", "Booth War Room", "Executive Summary"],
-    index=0,
-)
-
 df_all = load_all_entries()
 if "mode" in df_all.columns:
     walk_df = df_all[df_all["mode"] == "Walk"].copy()
@@ -464,18 +458,30 @@ else:
     walk_df = pd.DataFrame()
     booth_df = pd.DataFrame()
 
-if nav == "Capture":
+capture_tab, walk_tab, booth_tab, exec_tab = st.tabs(
+    ["Capture", "Walk War Room", "Booth War Room", "Executive Summary"]
+)
+
+with capture_tab:
     changed = render_capture_view()
     if changed:
         df_all = load_all_entries()
+        if "mode" in df_all.columns:
+            walk_df = df_all[df_all["mode"] == "Walk"].copy()
+            booth_df = df_all[df_all["mode"] == "Booth"].copy()
     render_export_controls(df_all, df_all, "capture")
-elif nav == "Walk War Room":
+
+with walk_tab:
+    st.caption(f"Showing Walk entries only: {len(walk_df)}")
     render_walk_war_room(walk_df)
     render_export_controls(df_all, walk_df, "walk")
-elif nav == "Booth War Room":
+
+with booth_tab:
+    st.caption(f"Showing Booth entries only: {len(booth_df)}")
     render_booth_war_room(booth_df)
     render_export_controls(df_all, booth_df, "booth")
-else:
+
+with exec_tab:
     render_exec_summary(df_all)
     render_export_controls(df_all, df_all, "executive")
 
