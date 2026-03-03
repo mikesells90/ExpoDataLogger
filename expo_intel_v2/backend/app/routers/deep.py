@@ -18,11 +18,12 @@ def create_deep(payload: DeepEvalCreate, db: Session = Depends(get_db)):
 def list_deep(
     direct_competitors_only: bool = Query(False),
     high_partnership_only: bool = Query(False),
+    event_slug: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     return query_deep_evals(
         db,
         direct_competitors_only=direct_competitors_only,
         high_partnership_only=high_partnership_only,
+        event_slug=event_slug,
     )
-

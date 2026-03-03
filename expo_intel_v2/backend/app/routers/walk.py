@@ -18,7 +18,12 @@ def create_walk(payload: WalkScanCreate, db: Session = Depends(get_db)):
 def list_walk(
     meat_forward_only: bool = Query(False),
     organic_only: bool = Query(False),
+    event_slug: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    return query_walk_scans(db, meat_forward_only=meat_forward_only, organic_only=organic_only)
-
+    return query_walk_scans(
+        db,
+        meat_forward_only=meat_forward_only,
+        organic_only=organic_only,
+        event_slug=event_slug,
+    )

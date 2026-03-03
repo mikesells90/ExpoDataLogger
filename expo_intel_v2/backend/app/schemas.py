@@ -1,27 +1,41 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+FOLLOW_UP_FLAGS = ["revisit", "deep_dive", "skip"]
+PRIORITIES = ["tier1", "tier2", "tier3"]
+MFG_TYPES = ["self", "co_pack", "unknown"]
+SCALE_TYPES = ["small", "mid", "national"]
+CONFIDENCE_TYPES = ["low", "medium", "high"]
+
+
+def _list_or_empty(value):
+    return value if isinstance(value, list) else []
 
 
 class WalkScanBase(BaseModel):
-    timestamp: Optional[datetime] = None
+    event_slug: str = "natural-products-expo-west-2026"
     company_name: str
     booth_number: Optional[str] = None
     hall: Optional[str] = None
-
     category_tags: list[str] = Field(default_factory=list)
-    protein_signal_score: Optional[int] = None
-    competitive_threat_score: Optional[int] = None
+    protein_signal_score: int
+    competitive_threat_score: int
+    follow_up_flag: Literal["revisit", "deep_dive", "skip"]
+    usda_flag: bool = False
+    organic_flag: bool = False
+    sqf_flag: bool = False
+    regenerative_flag: bool = False
+    emerging_brand_flag: bool = False
+    quick_notes: Optional[str] = Field(default=None, max_length=500)
 
-    usda_flag: Optional[bool] = None
-    organic_flag: Optional[bool] = None
-    sqf_flag: Optional[bool] = None
-    regenerative_flag: Optional[bool] = None
-    emerging_brand_flag: Optional[bool] = None
-
-    quick_notes: Optional[str] = None
-    follow_up_flag: Optional[str] = None
+    @field_validator("protein_signal_score", "competitive_threat_score")
+    @classmethod
+    def _validate_1_5(cls, value: int):
+        if value < 1 or value > 5:
+            raise ValueError("must be between 1 and 5")
+        return value
 
 
 class WalkScanCreate(WalkScanBase):
@@ -30,19 +44,23 @@ class WalkScanCreate(WalkScanBase):
 
 class WalkScanOut(WalkScanBase):
     scan_id: str
-    prs_score: Optional[float] = None
-    cti_score: Optional[float] = None
-    pos_score: Optional[float] = None
-    sps_score: Optional[float] = None
-    tier: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    prs_score: int
+    cti_score: int
+    pos_score: int
+    sps_score: int
+    tier: Literal["tier1", "tier2", "tier3"]
+    score_confidence: Literal["low", "medium", "high"]
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class DeepEvalBase(BaseModel):
-    timestamp: Optional[datetime] = None
+    event_slug: str = "natural-products-expo-west-2026"
     company_name: str
     booth_number: Optional[str] = None
+    hall: Optional[str] = None
 
     contact_name: Optional[str] = None
     contact_email: Optional[str] = None
@@ -55,24 +73,34 @@ class DeepEvalBase(BaseModel):
     price_per_unit: Optional[float] = None
 
     claims_tags: list[str] = Field(default_factory=list)
-    manufacturing_type: Optional[str] = None
+    manufacturing_type: Literal["self", "co_pack", "unknown"]
     certifications: list[str] = Field(default_factory=list)
-    estimated_scale: Optional[str] = None
+    estimated_scale: Literal["small", "mid", "national"]
+    kill_step_type: Optional[str] = None
 
     channel_presence: list[str] = Field(default_factory=list)
 
-    direct_competitor_flag: Optional[bool] = None
+    direct_competitor_flag: bool = False
     closest_charcut_sku: Optional[str] = None
-
-    strategic_fit_score: Optional[int] = None
-    competitive_threat_score: Optional[int] = None
-    partnership_potential_score: Optional[int] = None
-
-    strength_notes: Optional[str] = None
+    differentiator_notes: Optional[str] = None
     weakness_notes: Optional[str] = None
-    action_plan: list[str] = Field(default_factory=list)
+    what_they_do_better: Optional[str] = None
+    what_we_do_better: Optional[str] = None
 
-    post_show_priority: Optional[str] = None
+    strategic_fit_score: int
+    competitive_threat_score: int
+    partnership_potential_score: int
+
+    action_plan: list[str] = Field(default_factory=list)
+    post_show_priority: Literal["tier1", "tier2", "tier3"]
+    full_notes: Optional[str] = None
+
+    @field_validator("strategic_fit_score", "competitive_threat_score", "partnership_potential_score")
+    @classmethod
+    def _validate_1_5(cls, value: int):
+        if value < 1 or value > 5:
+            raise ValueError("must be between 1 and 5")
+        return value
 
 
 class DeepEvalCreate(DeepEvalBase):
@@ -81,11 +109,14 @@ class DeepEvalCreate(DeepEvalBase):
 
 class DeepEvalOut(DeepEvalBase):
     eval_id: str
-    prs_score: Optional[float] = None
-    cti_score: Optional[float] = None
-    pos_score: Optional[float] = None
-    sps_score: Optional[float] = None
-    tier: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    prs_score: int
+    cti_score: int
+    pos_score: int
+    sps_score: int
+    tier_suggested: Literal["tier1", "tier2", "tier3"]
+    score_confidence: Literal["low", "medium", "high"]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -94,19 +125,33 @@ class ExhibitorCursorIngest(BaseModel):
     cursor: Optional[str] = None
     exhibitors: list[dict] = Field(default_factory=list)
 
+    @field_validator("exhibitors", mode="before")
+    @classmethod
+    def _normalize_exhibitors(cls, value):
+        return _list_or_empty(value)
+
+
+class GraphQLIngestRequest(BaseModel):
+    max_pages: int = 50
+    delay_seconds: float = 0.4
+
 
 class HeatMapRow(BaseModel):
     hall: str
     booth_count: int
+    total_sps: float
     avg_sps: float
+    density_score: float
     heat_color: str
 
 
 class StrategicRankingRow(BaseModel):
-    source: str
+    source: Literal["walk", "deep_eval", "combined"]
     record_id: str
     company_name: str
     booth_number: Optional[str] = None
-    sps_score: Optional[float] = None
+    hall: Optional[str] = None
+    sps_score: Optional[int] = None
     tier: Optional[str] = None
+    score_confidence: Optional[str] = None
 
