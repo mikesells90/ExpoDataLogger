@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -18,4 +18,8 @@ def init_db() -> None:
     from models import Base
 
     Base.metadata.create_all(bind=engine)
-
+    with engine.begin() as conn:
+        cols = conn.execute(text("PRAGMA table_info(booth_entries)")).fetchall()
+        col_names = {c[1] for c in cols}
+        if "meta_json" not in col_names:
+            conn.execute(text("ALTER TABLE booth_entries ADD COLUMN meta_json TEXT"))

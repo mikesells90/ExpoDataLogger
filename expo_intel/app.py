@@ -61,6 +61,7 @@ def get_entries_df(session) -> pd.DataFrame:
                 "positioning_angle": r.positioning_angle,
                 "response_strength": r.response_strength,
                 "forced_insight": r.forced_insight,
+                "meta_json": r.meta_json,
                 "blue_ocean_score": r.blue_ocean_score,
                 "threat_score": r.threat_score,
                 "archetype": r.archetype,
@@ -140,6 +141,10 @@ def render_capture_view() -> bool:
     quick_blue = False
     quick_danger = False
     form_data = {}
+    meta_payload = {}
+
+    def parse_csv_list(raw: str) -> list[str]:
+        return [x.strip() for x in (raw or "").split(",") if x.strip()]
 
     top1, top2, top3, top4, top5 = st.columns([1.4, 1.2, 1.1, 1.4, 1.5])
     with top1:
@@ -154,177 +159,191 @@ def render_capture_view() -> bool:
         st.toggle("Quick Add Mode", key="quick_add_mode")
 
     with st.form("capture_form", clear_on_submit=False):
-        brand_name = st.text_input("Brand Name *", value="", placeholder="Type brand and submit fast")
+        brand_name = st.text_input("Company Name *", value="", placeholder="Type company and submit fast")
         quick_add_mode = st.session_state.get("quick_add_mode", False)
 
         if quick_add_mode:
             st.caption("Quick Add is on: only brand, mode, and time block are required.")
             submitted = st.form_submit_button("Save Quick Entry", use_container_width=True, type="primary")
         else:
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                category = st.selectbox(
-                    "Category",
-                    ["Energy", "Hydration", "Protein", "Functional", "Snack", "Other"],
-                    index=["Energy", "Hydration", "Protein", "Functional", "Snack", "Other"].index(get_default("category", "Functional")),
-                )
-                format_type = st.selectbox(
-                    "Format",
-                    ["Can", "Bottle", "Powder", "Shot", "Bar", "Other"],
-                    index=["Can", "Bottle", "Powder", "Shot", "Bar", "Other"].index(get_default("format_type", "Can")),
-                )
-                channel_target = st.selectbox(
-                    "Channel Target",
-                    ["Mass", "Specialty", "Gym", "DTC", "Foodservice"],
-                    index=["Mass", "Specialty", "Gym", "DTC", "Foodservice"].index(get_default("channel_target", "Mass")),
-                )
-                flavor_mode = st.multiselect(
-                    "Flavor Mode (max 2)",
-                    ["Fruity", "Citrus", "Creamy", "Dessert", "Savory", "Botanical", "Classic"],
-                    default=get_default("flavor_mode", []),
-                )
-                heat_index = st.slider("Heat Index", 0, 3, int(get_default("heat_index", 1)))
-                sugar_signal = st.selectbox(
-                    "Sugar Signal",
-                    ["Low", "Medium", "High", "Unknown"],
-                    index=["Low", "Medium", "High", "Unknown"].index(get_default("sugar_signal", "Unknown")),
-                )
-                ingredient_signals = st.multiselect(
-                    "Ingredient Signals",
-                    ["Adaptogens", "Nootropics", "Electrolytes", "Collagen", "Creatine", "Vitamins", "Caffeine"],
-                    default=get_default("ingredient_signals", []),
-                )
-
-            with c2:
-                primary_claim = st.selectbox(
-                    "Primary Claim Type",
-                    ["Energy", "Recovery", "Hydration", "Focus", "Macro/Protein", "Gut Health", "Mood", "Other"],
-                    index=["Energy", "Recovery", "Hydration", "Focus", "Macro/Protein", "Gut Health", "Mood", "Other"].index(get_default("primary_claim", "Energy")),
-                )
-                claim_density = st.selectbox(
-                    "Claim Density",
-                    ["1", "2-3", "4+"],
-                    index=["1", "2-3", "4+"].index(get_default("claim_density", "2-3")),
-                )
-                claim_aggression = st.slider("Claim Aggression", 1, 5, int(get_default("claim_aggression", 3)))
-                premium_signal = st.slider("Premium Signal", 1, 5, int(get_default("premium_signal", 3)))
-                chaos_signal = st.slider("Chaos Signal", 1, 5, int(get_default("chaos_signal", 3)))
-                sampling_heavy = st.checkbox("Sampling Heavy", value=bool(get_default("sampling_heavy", False)))
-                influencer_visible = st.checkbox("Influencer Visible", value=bool(get_default("influencer_visible", False)))
-                production_complexity = st.slider("Production Complexity", 1, 5, int(get_default("production_complexity", 3)))
-                co_pack_friendly = st.selectbox(
-                    "Co-Pack Friendly",
-                    ["Yes", "No", "Maybe"],
-                    index=["Yes", "No", "Maybe"].index(get_default("co_pack_friendly", "Maybe")),
-                )
-                sku_spread = st.selectbox(
-                    "SKU Spread",
-                    ["1-3", "4-8", "9+"],
-                    index=["1-3", "4-8", "9+"].index(get_default("sku_spread", "4-8")),
-                )
-                margin_smell_test = st.selectbox(
-                    "Margin Smell Test",
-                    ["Low", "Medium", "High"],
-                    index=["Low", "Medium", "High"].index(get_default("margin_smell_test", "Medium")),
-                )
-                would_fund = st.selectbox(
-                    "Would I Fund This",
-                    ["Yes", "No", "With Changes"],
-                    index=["Yes", "No", "With Changes"].index(get_default("would_fund", "With Changes")),
-                )
-
-            with c3:
-                saturation_nearby = st.selectbox(
-                    "Saturation Nearby",
-                    ["Low", "Medium", "High"],
-                    index=["Low", "Medium", "High"].index(get_default("saturation_nearby", "Medium")),
-                )
-                differentiation = st.slider("Differentiation", 1, 5, int(get_default("differentiation", 3)))
-                forecast = st.selectbox(
-                    "Forecast",
-                    ["Fail", "Survive", "Scale", "Acquire"],
-                    index=["Fail", "Survive", "Scale", "Acquire"].index(get_default("forecast", "Survive")),
-                )
-                confidence = st.selectbox(
-                    "Confidence",
-                    ["Low", "Medium", "High"],
-                    index=["Low", "Medium", "High"].index(get_default("confidence", "Medium")),
-                )
-                forced_insight = st.text_input(
-                    "Forced Insight",
-                    value=get_default("forced_insight", ""),
-                    max_chars=120,
-                    placeholder="Max 120 chars",
-                )
-
-                if mode == "Walk":
-                    blue_ocean_tag = st.text_input("Blue Ocean Tag", value=get_default("blue_ocean_tag", ""))
-                    threat_flag = st.checkbox("Threat Flag", value=bool(get_default("threat_flag", False)))
-                    traffic_behavior = st.multiselect(
-                        "Traffic Behavior",
-                        ["Dense", "Fast Pass", "Sticky", "Line Forming", "Photo Heavy", "Sampling Queue"],
-                        default=get_default("traffic_behavior", []),
-                    )
+            if mode == "Walk":
+                st.markdown("#### Walk Rapid Scan")
+                c1, c2 = st.columns(2)
+                with c1:
+                    booth_number = st.text_input("Booth Number")
+                    hall = st.text_input("Hall")
+                    category_tags_raw = st.text_input("Category Tags (comma separated)")
+                    protein_signal_score = st.slider("Protein Signal Score", 1, 5, 3)
+                    competitive_threat_score = st.slider("Competitive Threat Score", 1, 5, 3)
+                    follow_up_flag = st.selectbox("Follow Up Flag", ["revisit", "deep_dive", "skip"])
+                with c2:
+                    usda_flag = st.checkbox("USDA")
+                    organic_flag = st.checkbox("Organic")
+                    sqf_flag = st.checkbox("SQF")
+                    regenerative_flag = st.checkbox("Regenerative")
+                    emerging_brand_flag = st.checkbox("Emerging Brand")
+                    quick_notes = st.text_area("Quick Notes", max_chars=500)
                     b1, b2 = st.columns(2)
                     quick_blue = b1.form_submit_button("Quick Blue Hint", use_container_width=True)
                     quick_danger = b2.form_submit_button("Quick Dangerous Early", use_container_width=True)
-                else:
-                    blue_ocean_tag = None
-                    threat_flag = False
-                    traffic_behavior = []
-                    visitor_role = st.selectbox(
-                        "Visitor Role",
-                        ["Buyer", "Founder", "Operator", "Investor", "Other"],
-                        index=["Buyer", "Founder", "Operator", "Investor", "Other"].index(get_default("visitor_role", "Buyer")),
-                    )
-                    first_question = st.text_input("First Question Asked", value=get_default("first_question", ""))
-                    engagement_depth = st.slider("Engagement Depth", 1, 5, int(get_default("engagement_depth", 3)))
-                    follow_up = st.checkbox("Follow Up", value=bool(get_default("follow_up", False)))
-                    objections = st.multiselect(
-                        "Objections",
-                        ["Price", "Taste", "Shelf Life", "Velocity", "Complex Ops", "No Clear Need"],
-                        default=get_default("objections", []),
-                    )
-                    positioning_angle = st.text_input("Positioning Angle Used", value=get_default("positioning_angle", ""))
-                    response_strength = st.slider("Response Strength", 1, 5, int(get_default("response_strength", 3)))
+
+                category_tags = parse_csv_list(category_tags_raw)
+                threat_band = "High" if competitive_threat_score >= 4 else ("Low" if competitive_threat_score <= 2 else "Medium")
+
+                meta_payload = {
+                    "schema": "expo_walk_scan",
+                    "booth_number": booth_number,
+                    "hall": hall,
+                    "category_tags": category_tags,
+                    "protein_signal_score": protein_signal_score,
+                    "competitive_threat_score": competitive_threat_score,
+                    "usda_flag": usda_flag,
+                    "organic_flag": organic_flag,
+                    "sqf_flag": sqf_flag,
+                    "regenerative_flag": regenerative_flag,
+                    "emerging_brand_flag": emerging_brand_flag,
+                    "quick_notes": quick_notes,
+                    "follow_up_flag": follow_up_flag,
+                }
+
+                form_data = {
+                    "category": category_tags[0] if category_tags else "Other",
+                    "format": "Other",
+                    "channel_target": hall,
+                    "flavor_mode": [],
+                    "heat_index": 0,
+                    "sugar_signal": "Unknown",
+                    "ingredient_signals": [],
+                    "primary_claim": category_tags[0] if category_tags else "Other",
+                    "claim_density": "2-3",
+                    "claim_aggression": competitive_threat_score,
+                    "premium_signal": protein_signal_score,
+                    "chaos_signal": competitive_threat_score,
+                    "sampling_heavy": False,
+                    "influencer_visible": False,
+                    "production_complexity": 3,
+                    "co_pack_friendly": "Maybe",
+                    "sku_spread": "1-3",
+                    "margin_smell_test": "Medium",
+                    "would_fund": "With Changes",
+                    "saturation_nearby": threat_band,
+                    "differentiation": protein_signal_score,
+                    "forecast": "Survive",
+                    "confidence": "Medium",
+                    "forced_insight": (quick_notes or "")[:120],
+                    "blue_ocean_tag": hall,
+                    "threat_flag": competitive_threat_score >= 4,
+                    "traffic_behavior": category_tags,
+                    "visitor_role": None,
+                    "first_question": None,
+                    "engagement_depth": None,
+                    "follow_up": False,
+                    "objections": [],
+                    "positioning_angle": f"Booth {booth_number}" if booth_number else None,
+                    "response_strength": None,
+                }
+            else:
+                st.markdown("#### Booth Deep Evaluation")
+                c1, c2 = st.columns(2)
+                with c1:
+                    booth_number = st.text_input("Booth Number")
+                    contact_name = st.text_input("Contact Name")
+                    contact_email = st.text_input("Contact Email")
+                    contact_role = st.text_input("Contact Role")
+                    website = st.text_input("Website")
+                    core_skus = st.text_area("Core SKUs")
+                    format_type = st.text_input("Format Type")
+                    pack_size = st.text_input("Pack Size")
+                    price_per_unit = st.number_input("Price per Unit", min_value=0.0, value=0.0, step=0.01)
+                    claims_tags_raw = st.text_input("Claims Tags (comma separated)")
+                    certifications_raw = st.text_input("Certifications (comma separated)")
+                with c2:
+                    manufacturing_type = st.selectbox("Manufacturing Type", ["self", "co_pack", "unknown"])
+                    estimated_scale = st.selectbox("Estimated Scale", ["small", "mid", "national"])
+                    channel_presence = st.multiselect("Channel Presence", ["retail", "club", "foodservice", "dtc", "amazon", "meal_kit"])
+                    direct_competitor_flag = st.checkbox("Direct Competitor")
+                    closest_charcut_sku = st.text_input("Closest Charcut SKU")
+                    strategic_fit_score = st.slider("Strategic Fit Score", 1, 5, 3)
+                    competitive_threat_score = st.slider("Competitive Threat Score", 1, 5, 3)
+                    partnership_potential_score = st.slider("Partnership Potential Score", 1, 5, 3)
+                    strength_notes = st.text_area("Strength Notes")
+                    weakness_notes = st.text_area("Weakness Notes")
+                    action_plan_raw = st.text_input("Action Plan (comma separated)")
+                    post_show_priority = st.selectbox("Post Show Priority", ["tier1", "tier2", "tier3"])
+
+                claims_tags = parse_csv_list(claims_tags_raw)
+                certifications = parse_csv_list(certifications_raw)
+                action_plan = parse_csv_list(action_plan_raw)
+                complexity = 4 if manufacturing_type == "self" else (2 if manufacturing_type == "co_pack" else 3)
+                margin_band = "High" if price_per_unit >= 6 else ("Medium" if price_per_unit >= 3 else "Low")
+                scale_to_forecast = {"small": "Survive", "mid": "Scale", "national": "Acquire"}
+                would_fund = "Yes" if post_show_priority == "tier1" else ("With Changes" if post_show_priority == "tier2" else "No")
+
+                meta_payload = {
+                    "schema": "expo_deep_eval",
+                    "booth_number": booth_number,
+                    "contact_name": contact_name,
+                    "contact_email": contact_email,
+                    "contact_role": contact_role,
+                    "website": website,
+                    "core_skus": core_skus,
+                    "format_type": format_type,
+                    "pack_size": pack_size,
+                    "price_per_unit": price_per_unit,
+                    "claims_tags": claims_tags,
+                    "manufacturing_type": manufacturing_type,
+                    "certifications": certifications,
+                    "estimated_scale": estimated_scale,
+                    "channel_presence": channel_presence,
+                    "direct_competitor_flag": direct_competitor_flag,
+                    "closest_charcut_sku": closest_charcut_sku,
+                    "strategic_fit_score": strategic_fit_score,
+                    "competitive_threat_score": competitive_threat_score,
+                    "partnership_potential_score": partnership_potential_score,
+                    "strength_notes": strength_notes,
+                    "weakness_notes": weakness_notes,
+                    "action_plan": action_plan,
+                    "post_show_priority": post_show_priority,
+                }
+
+                form_data = {
+                    "category": claims_tags[0] if claims_tags else "Other",
+                    "format": format_type or "Other",
+                    "channel_target": ", ".join(channel_presence),
+                    "flavor_mode": [],
+                    "heat_index": 0,
+                    "sugar_signal": "Unknown",
+                    "ingredient_signals": certifications,
+                    "primary_claim": closest_charcut_sku or "Deep Eval",
+                    "claim_density": "2-3",
+                    "claim_aggression": competitive_threat_score,
+                    "premium_signal": strategic_fit_score,
+                    "chaos_signal": competitive_threat_score,
+                    "sampling_heavy": False,
+                    "influencer_visible": False,
+                    "production_complexity": complexity,
+                    "co_pack_friendly": "Yes" if manufacturing_type == "co_pack" else ("No" if manufacturing_type == "self" else "Maybe"),
+                    "sku_spread": "4-8",
+                    "margin_smell_test": margin_band,
+                    "would_fund": would_fund,
+                    "saturation_nearby": "High" if direct_competitor_flag else "Medium",
+                    "differentiation": partnership_potential_score,
+                    "forecast": scale_to_forecast.get(estimated_scale, "Survive"),
+                    "confidence": "Medium",
+                    "forced_insight": (strength_notes or "")[:120],
+                    "blue_ocean_tag": None,
+                    "threat_flag": direct_competitor_flag,
+                    "traffic_behavior": [],
+                    "visitor_role": contact_role,
+                    "first_question": closest_charcut_sku,
+                    "engagement_depth": strategic_fit_score,
+                    "follow_up": post_show_priority in {"tier1", "tier2"},
+                    "objections": parse_csv_list(weakness_notes),
+                    "positioning_angle": core_skus,
+                    "response_strength": partnership_potential_score,
+                }
 
             submitted = st.form_submit_button("Submit Intel", use_container_width=True, type="primary")
-            form_data = {
-                "category": category,
-                "format": format_type,
-                "channel_target": channel_target,
-                "flavor_mode": flavor_mode,
-                "heat_index": heat_index,
-                "sugar_signal": sugar_signal,
-                "ingredient_signals": ingredient_signals,
-                "primary_claim": primary_claim,
-                "claim_density": claim_density,
-                "claim_aggression": claim_aggression,
-                "premium_signal": premium_signal,
-                "chaos_signal": chaos_signal,
-                "sampling_heavy": sampling_heavy,
-                "influencer_visible": influencer_visible,
-                "production_complexity": production_complexity,
-                "co_pack_friendly": co_pack_friendly,
-                "sku_spread": sku_spread,
-                "margin_smell_test": margin_smell_test,
-                "would_fund": would_fund,
-                "saturation_nearby": saturation_nearby,
-                "differentiation": differentiation,
-                "forecast": forecast,
-                "confidence": confidence,
-                "forced_insight": forced_insight,
-                "blue_ocean_tag": blue_ocean_tag,
-                "threat_flag": threat_flag,
-                "traffic_behavior": traffic_behavior,
-                "visitor_role": visitor_role if mode == "Booth" else None,
-                "first_question": first_question if mode == "Booth" else None,
-                "engagement_depth": engagement_depth if mode == "Booth" else None,
-                "follow_up": follow_up if mode == "Booth" else False,
-                "objections": objections if mode == "Booth" else [],
-                "positioning_angle": positioning_angle if mode == "Booth" else None,
-                "response_strength": response_strength if mode == "Booth" else None,
-            }
 
     if not submitted:
         if quick_blue or quick_danger:
@@ -401,6 +420,7 @@ def render_capture_view() -> bool:
             positioning_angle=payload.get("positioning_angle"),
             response_strength=payload.get("response_strength"),
             forced_insight=payload.get("forced_insight"),
+            meta_json=to_json(meta_payload),
             blue_ocean_score=derived["blue_ocean_score"],
             threat_score=derived["threat_score"],
             archetype=archetype,

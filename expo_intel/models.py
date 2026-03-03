@@ -55,6 +55,7 @@ class BoothEntry(Base):
     response_strength = Column(Integer)
 
     forced_insight = Column(Text)
+    meta_json = Column(Text)
 
     blue_ocean_score = Column(Float)
     threat_score = Column(Float)
